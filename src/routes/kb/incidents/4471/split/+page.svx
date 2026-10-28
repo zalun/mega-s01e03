@@ -1,0 +1,61 @@
+---
+layout: runbook
+title: '#4471 split: three problems, not one'
+owner: support desk
+status: open
+reviewed: 2026-10-28
+signature: Piotr Zalewa
+---
+
+<script>
+  import ProblemTable from '#lib/kb/ProblemTable.svelte';
+  import CauseTable from '#lib/kb/CauseTable.svelte';
+  import Callout from '#lib/kb/Callout.svelte';
+  import RenderStamp from '#lib/kb/RenderStamp.svelte';
+</script>
+
+[#4471](/kb/incidents/4471) says one issue, one fix queued. Its own data says otherwise. The
+reports were merged on subject line ([decision 0001](/kb/decisions/0001-dedupe-by-subject)), and
+"wrong date" is a symptom that three different bugs share.
+
+<Callout kind="warn">
+The queued parser fix closes only the <code>parser</code> group. The other two stay broken after it ships.
+</Callout>
+
+## The problems in #4471
+
+<ProblemTable ticket={4471} repo="zalun/mega-s01e03" tickets={{ parser: 1, hint: 2, 'one-day': 3 }} />
+
+- **`parser`**: the shared parser reads every date month first. Tenants whose locale writes the
+  day first get day and month swapped (7 April becomes 4 July). This is the bug #4471 describes.
+- **`hint`**: `booking-v3` prints `MM/DD/YYYY` under its date field. Day-first tenants type what
+  the hint says, and the form reads it day first. Same symptom, different code: the form's hint,
+  not the parser. Fixing the parser does not touch it.
+- **`one-day`**: the date moves by one day, not by a day/month swap. Tuesday becomes Monday, a
+  client in Lisbon and one in Toronto get different days for the same meeting, an invite arrives
+  before the booking. That points at time zones, not date order. The desk spotted these
+  (`desk-notes.json`) but [#4471](/kb/incidents/4471) still counts them under `parser`.
+
+## What #4471 shows today
+
+<CauseTable ticket={4471} />
+
+The table above already flags `hint` as "not this ticket", and its footnote counts the one-day
+moves. The page around it still says one issue.
+
+## How to tell them apart
+
+- Read the tenant, not the intake tag. `meta.intakeTag` comes from the reporter's browser; the
+  "tagged as" column above shows how often it disagrees with the tenant rule.
+- Swap or shift: if the two dates in a report are each other with day and month swapped, it is
+  `parser` or `hint`. If they are one day apart, it is `one-day`.
+- `parser` or `hint`: a report through a `booking-v3` form is `hint`. Everything else from a
+  day-first tenant is `parser`.
+
+## Next
+
+- Keep #4471 for the parser. Move `hint` and `one-day` reports to their own tickets.
+- Revisit decision 0001: matching on subject merged three bugs under one title. It has not been
+  reviewed since June 2024.
+
+<RenderStamp {signature} />
